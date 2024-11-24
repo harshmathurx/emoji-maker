@@ -1,3 +1,6 @@
+"use client"
+
+// Inspired by react-hot-toast library
 import * as React from "react"
 
 import type {
@@ -25,7 +28,7 @@ const actionTypes = {
 let count = 0
 
 function genId() {
-  count = (count + 1) % Number.MAX_VALUE
+  count = (count + 1) % Number.MAX_SAFE_INTEGER
   return count.toString()
 }
 
@@ -155,7 +158,7 @@ function toast({ ...props }: Toast) {
       ...props,
       id,
       open: true,
-      onOpenChange: (open: boolean) => {
+      onOpenChange: (open) => {
         if (!open) dismiss()
       },
     },
@@ -188,4 +191,4 @@ function useToast() {
   }
 }
 
-export { useToast, toast } 
+export { useToast, toast }

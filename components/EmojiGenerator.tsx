@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@/hooks/use-toast';
 import { useCredits } from '@/hooks/use-credits';
+import { useToast } from '@/hooks/use-toast';
 
 
 export default function EmojiGenerator() {
@@ -48,10 +48,11 @@ export default function EmojiGenerator() {
       }
 
       toast({
+        variant: "success",
         title: "Success",
         description: "Emoji generated successfully!",
       });
-      
+
       router.refresh();
       setPrompt('');
     } catch (error) {

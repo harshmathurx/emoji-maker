@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
-import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 const PACKAGES = [
     {
@@ -75,6 +75,7 @@ export default function PricingSection() {
                         const verifyData = await verifyRes.json();
                         if (verifyData.success) {
                             toast({
+                                variant: "success",
                                 title: "Payment successful",
                                 description: `Added ${PACKAGES.find(p => p.name === packageName)?.credits} credits to your account`,
                             });
