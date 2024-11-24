@@ -1,30 +1,22 @@
 "use client";
 
 import { useState } from 'react';
-import { useAuth } from '@clerk/nextjs';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Card } from './ui/card';
-import { Loader2 } from 'lucide-react';
-import { useEmojiStore } from '../lib/emojiStore';
+import { useRouter } from 'next/navigation';
+import { useToast } from '@/hooks/use-toast';
 
 export default function EmojiGenerator() {
   const [prompt, setPrompt] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const { isSignedIn } = useAuth();
-  const addNewEmoji = useEmojiStore((state) => state.addNewEmoji);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Submitting emoji generation form');
-    if (!isSignedIn) {
-      console.log('User not signed in');
-      // Handle not signed in state
-      return;
-    }
-    setIsGenerating(true);
+    setLoading(true);
+
     try {
-      console.log('Sending request to generate emoji');
       const response = await fetch('/api/generate-emoji', {
         method: 'POST',
         headers: {
@@ -32,43 +24,54 @@ export default function EmojiGenerator() {
         },
         body: JSON.stringify({ prompt }),
       });
+
       const data = await response.json();
-      console.log('Received response:', data);
-      if (data.success) {
-        console.log('Emoji generated successfully');
-        addNewEmoji(data.emoji);
-        setPrompt('');
-      } else {
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          toast({
+            title: "Insufficient credits",
+            description: data.message,
+            variant: "destructive",
+          });
+          router.push('/pricing');
+          return;
+        }
         throw new Error(data.error || 'Failed to generate emoji');
       }
+
+      toast({
+        title: "Success",
+        description: "Emoji generated successfully!",
+      });
+      
+      router.refresh();
+      setPrompt('');
     } catch (error) {
-      console.error('Error generating emoji:', error);
-      // Handle error (e.g., show error message to user)
+      toast({
+        title: "Error",
+        description: "Failed to generate emoji. Please try again.",
+        variant: "destructive",
+      });
     } finally {
-      setIsGenerating(false);
+      setLoading(false);
     }
   };
 
   return (
-    <Card className="p-6 mb-8">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit} className="max-w-md mx-auto my-8">
+      <div className="flex gap-2">
         <Input
           type="text"
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Enter emoji prompt"
-          disabled={isGenerating}
-          className="w-full"
+          placeholder="Describe your emoji..."
+          disabled={loading}
         />
-        <Button type="submit" disabled={isGenerating}>
-          {isGenerating ? 'Generating...' : 'Generate Emoji'}
+        <Button type="submit" disabled={loading || !prompt}>
+          {loading ? 'Generating...' : 'Generate'}
         </Button>
-      </form>
-      {isGenerating && (
-        <div className="mt-4 flex justify-center">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        </div>
-      )}
-    </Card>
+      </div>
+    </form>
   );
 }

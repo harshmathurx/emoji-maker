@@ -6,6 +6,7 @@ import {
 } from '@clerk/nextjs'
 import Header from "@/components/headers";
 import UserProfileInitializer from '../components/UserProfileInitializer';
+import { Toaster } from "@/components/providers/toast-provider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -31,12 +32,19 @@ export default function RootLayout({
   return (
     <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY} signInUrl="/sign-in">
       <html lang="en">
+        <head>
+          <script
+            async
+            src="https://checkout.razorpay.com/v1/checkout.js"
+          />
+        </head>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <UserProfileInitializer />
           <Header />
           {children}
+          <Toaster />
         </body>
       </html>
     </ClerkProvider>

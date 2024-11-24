@@ -25,6 +25,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Check if user has enough credits
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('credits')
+    .eq('user_id', userId)
+    .single();
+
+  if (profileError) {
+    console.error('Error checking credits:', profileError);
+    return NextResponse.json({ error: 'Failed to check credits' }, { status: 500 });
+  }
+
+  if (!profile || profile.credits < 1) {
+    return NextResponse.json({ 
+      error: 'Insufficient credits', 
+      message: 'Please purchase more credits to continue generating emojis.',
+      redirectTo: '/pricing'
+    }, { status: 403 });
+  }
+
   const { prompt } = await request.json();
   console.log('Prompt:', prompt);
 
@@ -96,6 +116,16 @@ export async function POST(request: Request) {
 
     if (emojiError) {
       throw emojiError;
+    }
+
+    // After successful emoji generation and storage, use credits
+    const { error: creditError } = await supabase.rpc('use_credits', {
+      user_id_param: userId,
+      emoji_id_param: emojiData.id
+    });
+
+    if (creditError) {
+      throw creditError;
     }
 
     console.log('Emoji generated successfully:', emojiData);
