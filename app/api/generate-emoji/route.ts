@@ -25,111 +25,117 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Check if user has enough credits
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('credits')
-    .eq('user_id', userId)
-    .single();
-
-  if (profileError) {
-    console.error('Error checking credits:', profileError);
-    return NextResponse.json({ error: 'Failed to check credits' }, { status: 500 });
-  }
-
-  if (!profile || profile.credits < 1) {
-    return NextResponse.json({ 
-      error: 'Insufficient credits', 
-      message: 'Please purchase more credits to continue generating emojis.',
-      redirectTo: '/pricing'
-    }, { status: 403 });
-  }
-
-  const { prompt } = await request.json();
-  console.log('Prompt:', prompt);
-
   try {
-    console.log('Generating emoji with Replicate');
-    const output = await replicate.run(
-      "fofr/sdxl-emoji:dee76b5afde21b0f01ed7925f0665b7e879c50ee718c5f78a9d38e04d523cc5e",
-      {
-        input: {
-          prompt: "A TOK emoji of " + prompt,
-          width: 1024,
-          height: 1024,
-          refine: "no_refiner",
-          scheduler: "K_EULER",
-          lora_scale: 0.6,
-          num_outputs: 1,
-          guidance_scale: 7.5,
-          apply_watermark: false,
-          high_noise_frac: 0.8,
-          negative_prompt: "",
-          prompt_strength: 0.8,
-          num_inference_steps: 50
+    // First deduct the credit
+    const { data: deductResult, error: deductError } = await supabase.rpc(
+      'deduct_credit',
+      { user_id_param: userId }
+    );
+
+    if (deductError || !deductResult) {
+      return NextResponse.json({ 
+        error: 'Insufficient credits', 
+        message: 'Please purchase more credits to continue generating emojis.',
+        redirectTo: '/pricing'
+      }, { status: 403 });
+    }
+
+    const { prompt } = await request.json();
+    console.log('Prompt:', prompt);
+
+    try {
+      console.log('Generating emoji with Replicate');
+      const output = await replicate.run(
+        "fofr/sdxl-emoji:dee76b5afde21b0f01ed7925f0665b7e879c50ee718c5f78a9d38e04d523cc5e",
+        {
+          input: {
+            prompt: "A TOK emoji of " + prompt,
+            width: 1024,
+            height: 1024,
+            refine: "no_refiner",
+            scheduler: "K_EULER",
+            lora_scale: 0.6,
+            num_outputs: 1,
+            guidance_scale: 7.5,
+            apply_watermark: false,
+            high_noise_frac: 0.8,
+            negative_prompt: "",
+            prompt_strength: 0.8,
+            num_inference_steps: 50
+          }
         }
+      ) as ReplicateOutput;
+      console.log('Replicate output:', output);
+
+      if (!Array.isArray(output) || typeof output[0] !== 'string') {
+        throw new Error('Failed to generate emoji: Unexpected output format');
       }
-    ) as ReplicateOutput;
-    console.log('Replicate output:', output);
 
-    if (!Array.isArray(output) || typeof output[0] !== 'string') {
-      throw new Error('Failed to generate emoji: Unexpected output format');
-    }
+      const imageUrl = output[0];
 
-    const imageUrl = output[0];
+      // Download the image
+      const response = await fetch(imageUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
 
-    // Download the image
-    const response = await fetch(imageUrl);
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+      // Upload to Supabase Storage
+      const fileName = `${userId}_${Date.now()}.png`;
+      console.log('Uploading to Supabase Storage');
+      const { error: uploadError } = await supabase.storage
+        .from('emojis')
+        .upload(fileName, buffer, {
+          contentType: 'image/png',
+        });
 
-    // Upload to Supabase Storage
-    const fileName = `${userId}_${Date.now()}.png`;
-    console.log('Uploading to Supabase Storage');
-    const { error: uploadError } = await supabase.storage
-      .from('emojis')
-      .upload(fileName, buffer, {
-        contentType: 'image/png',
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get public URL of the uploaded image
+      console.log('Getting public URL');
+      const { data: { publicUrl } } = supabase.storage
+        .from('emojis')
+        .getPublicUrl(fileName);
+
+      // Add entry to emojis table
+      console.log('Adding entry to emojis table');
+      const { data: emojiData, error: emojiError } = await supabase
+        .from('emojis')
+        .insert({
+          image_url: publicUrl,
+          prompt,
+          creator_user_id: userId,
+        })
+        .select()
+        .single();
+
+      if (emojiError) {
+        throw emojiError;
+      }
+
+      // If successful, record the credit usage
+      const { error: usageError } = await supabase
+        .from('credit_usage')
+        .insert({
+          user_id: userId,
+          emoji_id: emojiData.id,
+          credits_used: 1
+        });
+
+      if (usageError) throw usageError;
+
+      return NextResponse.json({ 
+        success: true, 
+        emoji: emojiData,
+        credits: deductResult.credits // Return updated credits
       });
-
-    if (uploadError) {
-      throw uploadError;
+    } catch (error) {
+      // If generation fails, refund the credit
+      await supabase.rpc('refund_credit', {
+        user_id_param: userId
+      });
+      throw error;
     }
-
-    // Get public URL of the uploaded image
-    console.log('Getting public URL');
-    const { data: { publicUrl } } = supabase.storage
-      .from('emojis')
-      .getPublicUrl(fileName);
-
-    // Add entry to emojis table
-    console.log('Adding entry to emojis table');
-    const { data: emojiData, error: emojiError } = await supabase
-      .from('emojis')
-      .insert({
-        image_url: publicUrl,
-        prompt,
-        creator_user_id: userId,
-      })
-      .select()
-      .single();
-
-    if (emojiError) {
-      throw emojiError;
-    }
-
-    // After successful emoji generation and storage, use credits
-    const { error: creditError } = await supabase.rpc('use_credits', {
-      user_id_param: userId,
-      emoji_id_param: emojiData.id
-    });
-
-    if (creditError) {
-      throw creditError;
-    }
-
-    console.log('Emoji generated successfully:', emojiData);
-    return NextResponse.json({ success: true, emoji: emojiData });
   } catch (error) {
     console.error('Error generating or uploading emoji:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

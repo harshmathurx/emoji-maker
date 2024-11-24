@@ -7,6 +7,8 @@ import {
 import Header from "@/components/headers";
 import UserProfileInitializer from '../components/UserProfileInitializer';
 import { Toaster } from "@/components/providers/toast-provider";
+import { CreditsProvider } from '@/hooks/use-credits';
+import Link from 'next/link';
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -41,10 +43,23 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
-          <UserProfileInitializer />
-          <Header />
-          {children}
-          <Toaster />
+          <CreditsProvider>
+            <UserProfileInitializer />
+            <div className="flex items-center justify-between px-4 py-2">
+              <Link href="/" className="flex items-center space-x-2">
+                {/* <Image
+                  src="/logo.png" // Add your logo file
+                  alt="Emoji Maker"
+                  width={40}
+                  height={40}
+                /> */}
+                <span className="font-bold text-xl">Emoji Maker</span>
+              </Link>
+              <Header />
+            </div>
+            {children}
+            <Toaster />
+          </CreditsProvider>
         </body>
       </html>
     </ClerkProvider>

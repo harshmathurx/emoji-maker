@@ -5,12 +5,15 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { useCredits } from '@/hooks/use-credits';
+
 
 export default function EmojiGenerator() {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const { updateCredits } = useCredits();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +41,10 @@ export default function EmojiGenerator() {
           return;
         }
         throw new Error(data.error || 'Failed to generate emoji');
+      }
+
+      if (data.credits !== undefined) {
+        updateCredits(data.credits);
       }
 
       toast({
