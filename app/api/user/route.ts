@@ -9,35 +9,45 @@ const supabase = createClient(
 );
 
 export async function POST() {
-  const { userId } = auth();
-
-  if (!userId) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  // Check if user exists in profiles table
-  const { data: existingUser, error: fetchError } = await supabase
-    .from('profiles')
-    .select('user_id')
-    .eq('user_id', userId)
-    .single();
-
-  if (fetchError && fetchError.code !== 'PGRST116') {
-    console.error('Error fetching user:', fetchError);
-    return NextResponse.json({ error: 'Error fetching user' }, { status: 500 });
-  }
-
-  if (!existingUser) {
-    // Create new user profile
-    const { error: insertError } = await supabase
-      .from('profiles')
-      .insert({ user_id: userId });
-
-    if (insertError) {
-      console.error('Error creating user profile:', insertError);
-      return NextResponse.json({ error: 'Error creating user profile' }, { status: 500 });
+  try {
+    const { userId } = auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-  }
 
-  return NextResponse.json({ success: true });
+    // First try to get existing profile
+    let { data: profile, error: fetchError } = await supabase
+      .from('profiles')
+      .select()
+      .eq('user_id', userId)
+      .single();
+
+    // If profile doesn't exist, create it
+    if (!profile) {
+      const { data: newProfile, error: insertError } = await supabase
+        .from('profiles')
+        .insert({ user_id: userId })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+      profile = newProfile;
+    }
+    fetchError = fetchError || null;
+    if (fetchError) {
+      throw new Error(`Failed to fetch profile: ${fetchError.message}`);
+    }
+
+    if (!profile) {
+      throw new Error('Failed to create or fetch profile');
+    }
+
+    return NextResponse.json({ success: true, profile });
+  } catch (error) {
+    console.error('Error creating user profile:', error);
+    return NextResponse.json(
+      { error: 'Failed to create user profile' },
+      { status: 500 }
+    );
+  }
 }
