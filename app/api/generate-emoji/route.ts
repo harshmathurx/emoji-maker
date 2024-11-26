@@ -41,7 +41,6 @@ export async function POST(request: Request) {
     }
 
     const { prompt } = await request.json();
-    console.log('Prompt:', prompt);
 
     try {
       console.log('Generating emoji with Replicate');
@@ -49,7 +48,7 @@ export async function POST(request: Request) {
         "fofr/sdxl-emoji:dee76b5afde21b0f01ed7925f0665b7e879c50ee718c5f78a9d38e04d523cc5e",
         {
           input: {
-            prompt: "A TOK emoji of " + prompt,
+            prompt: prompt,
             width: 1024,
             height: 1024,
             refine: "no_refiner",

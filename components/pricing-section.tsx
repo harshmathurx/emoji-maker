@@ -12,21 +12,21 @@ const PACKAGES = [
         title: 'Basic Package',
         price: '₹40',
         credits: 5,
-        costPerEmoji: '₹8'
+        costPerPoster: '₹8'
     },
     {
         name: 'premium',
         title: 'Premium Package',
         price: '₹100',
         credits: 15,
-        costPerEmoji: '₹6.67'
+        costPerPoster: '₹6.67'
     },
     {
         name: 'pro',
         title: 'Pro Package',
         price: '₹300',
         credits: 50,
-        costPerEmoji: '₹6'
+        costPerPoster: '₹6'
     }
 ] as const;
 
@@ -115,7 +115,7 @@ export default function PricingSection() {
                     <p className="text-3xl font-bold mb-2">{pkg.price}</p>
                     <ul className="mb-6 space-y-2">
                         <li>{pkg.credits} Credits</li>
-                        <li>{pkg.costPerEmoji} per emoji</li>
+                        <li>{pkg.costPerPoster} per poster</li>
                     </ul>
                     <Button
                         onClick={() => handlePurchase(pkg.name)}

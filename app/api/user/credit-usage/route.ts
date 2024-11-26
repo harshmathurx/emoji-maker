@@ -18,7 +18,7 @@ export async function GET() {
       .from('credit_usage')
       .select(`
         *,
-        emojis (
+        posters (
           prompt,
           image_url
         )

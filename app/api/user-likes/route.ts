@@ -15,8 +15,8 @@ export async function GET() {
 
   try {
     const { data, error } = await supabase
-      .from('emoji_likes')
-      .select('emoji_id')
+      .from('poster_likes')
+      .select('poster_id')
       .eq('user_id', userId);
 
     if (error) throw error;
