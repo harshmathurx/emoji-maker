@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { auth } from '@clerk/nextjs/server';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,19 +9,30 @@ const supabase = createClient(
 
 export async function GET() {
   try {
-    const { data, error } = await supabase
+    const { data: posters, error } = await supabase
       .from('posters')
-      .select('*')
+      .select(`
+        id,
+        image_url,
+        prompt,
+        likes_count,
+        creator_user_id,
+        created_at,
+        profiles (
+          full_name,
+          avatar_url
+        )
+      `)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
 
-    const headers = new Headers();
-    headers.set('Cache-Control', 'no-store, max-age=0');
-
-    return NextResponse.json({ posters: data }, { headers });
+    return NextResponse.json({ posters });
   } catch (error) {
     console.error('Error fetching posters:', error);
-    return NextResponse.json({ error: 'Failed to fetch posters' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to fetch posters' },
+      { status: 500 }
+    );
   }
 } 

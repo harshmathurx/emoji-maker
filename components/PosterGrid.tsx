@@ -17,8 +17,15 @@ interface Poster {
   isLiked?: boolean;
 }
 
+interface PosterWithUser extends Poster {
+  profiles: {
+    full_name: string;
+    avatar_url: string;
+  };
+}
+
 export default function PosterGrid() {
-  const [posters, setPosters] = useState<Poster[]>([]);
+  const [posters, setPosters] = useState<PosterWithUser[]>([]);
   const newPoster = useStore((state) => state.newPoster);
   const { isSignedIn, userId } = useAuth();
 
@@ -34,12 +41,23 @@ export default function PosterGrid() {
           const likesData = await likesResponse.json();
           const likedPosterIds = new Set(likesData.likes.map((like: { poster_id: number }) => like.poster_id));
           
-          setPosters(data.posters.map((poster: Poster) => ({
+          setPosters(data.posters.map((poster: PosterWithUser) => ({
             ...poster,
-            isLiked: likedPosterIds.has(poster.id)
+            isLiked: likedPosterIds.has(poster.id),
+            profiles: poster.profiles || {
+              full_name: 'Unknown',
+              avatar_url: '/default-avatar.png'
+            }
           })));
         } else {
-          setPosters(data.posters.map((poster: Poster) => ({ ...poster, isLiked: false })));
+          setPosters(data.posters.map((poster: PosterWithUser) => ({ 
+            ...poster, 
+            isLiked: false,
+            profiles: poster.profiles || {
+              full_name: 'Unknown',
+              avatar_url: '/default-avatar.png'
+            }
+          })));
         }
       }
     } catch (error) {
@@ -53,9 +71,19 @@ export default function PosterGrid() {
 
   useEffect(() => {
     if (newPoster) {
-      setPosters((prevPosters) => [{ ...newPoster, isLiked: false }, ...prevPosters]);
+      setPosters((prevPosters) => [{
+        ...newPoster,
+        isLiked: false,
+        profiles: {
+          full_name: 'Loading...', // Will be updated on next fetch
+          avatar_url: '/default-avatar.png'
+        }
+      }, ...prevPosters]);
+      
+      // Fetch updated data to get the profile information
+      fetchPosters();
     }
-  }, [newPoster]);
+  }, [newPoster, fetchPosters]);
 
   const handleDownload = (imageUrl: string, prompt: string) => {
     fetch(imageUrl)
@@ -105,41 +133,62 @@ export default function PosterGrid() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4">
       {posters.map((poster) => (
-        <Card key={poster.id} className="overflow-hidden bg-transparent border-0 shadow-lg">
-          <div className="relative group">
+        <Card 
+          key={poster.id} 
+          className="group overflow-hidden bg-zinc-900 dark:bg-zinc-900/90 backdrop-blur-sm border-0 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+        >
+          <div className="relative aspect-square">
             <Image
               src={poster.image_url}
               alt={poster.prompt}
-              width={1024}
-              height={1024}
-              className="w-full h-auto rounded-lg"
+              fill
+              className="object-cover rounded-t-xl"
             />
-            <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
+            <div className="absolute inset-0 bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4 rounded-t-xl">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => handleDownload(poster.image_url, poster.prompt)}
-                className="text-white mr-2"
+                className="text-white hover:bg-white/20 transition-colors"
               >
-                <Download size={24} />
+                <Download className="h-6 w-6" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => handleLike(poster.id)}
-                className={`text-white ${poster.isLiked ? 'bg-red-500 bg-opacity-50' : ''}`}
+                className={`text-white hover:bg-white/20 transition-colors ${
+                  poster.isLiked ? 'bg-red-500/50' : ''
+                }`}
               >
-                <Heart size={24} fill={poster.isLiked ? 'currentColor' : 'none'} />
+                <Heart
+                  className="h-6 w-6"
+                  fill={poster.isLiked ? 'currentColor' : 'none'}
+                />
               </Button>
             </div>
           </div>
-          <div className="mt-4 px-2">
-            <p className="text-lg font-medium">{poster.prompt}</p>
-            <div className="flex items-center mt-2">
-              <Heart size={16} className="mr-1" />
-              <span>{poster.likes_count}</span>
+          <div className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="relative w-8 h-8">
+                  <Image
+                    src={poster.profiles?.avatar_url}
+                    alt={poster.profiles?.full_name}
+                    fill
+                    className="rounded-full object-cover"
+                  />
+                </div>
+                <span className="font-medium text-sm text-white dark:text-zinc-100">
+                  {poster.profiles?.full_name}
+                </span>
+              </div>
+              <div className="flex items-center text-sm text-white dark:text-zinc-400">
+                <Heart className="h-4 w-4 mr-1" />
+                <span>{poster.likes_count}</span>
+              </div>
             </div>
           </div>
         </Card>
