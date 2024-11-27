@@ -25,22 +25,32 @@ interface PosterWithUser extends Poster {
   };
 }
 
-export default function PosterGrid() {
+interface PosterGridProps {
+  userId?: string; // Optional: to fetch specific user's posters
+  showCreatorInfo?: boolean; // New prop to control creator info display
+}
+
+export default function PosterGrid({ userId, showCreatorInfo = true }: PosterGridProps) {
   const [posters, setPosters] = useState<PosterWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const newPoster = useStore((state) => state.newPoster);
-  const { isSignedIn, userId } = useAuth();
+  const { isSignedIn, userId: currentUserId } = useAuth();
 
   const fetchPosters = useCallback(async () => {
     try {
       setLoading(true);
       const timestamp = new Date().getTime();
-      const response = await fetch(`/api/posters?t=${timestamp}`);
+      // Use different endpoint based on whether we're fetching user-specific posters
+      const endpoint = userId 
+        ? `/api/user/posters?userId=${userId}&t=${timestamp}`
+        : `/api/posters?t=${timestamp}`;
+      
+      const response = await fetch(endpoint);
       const data = await response.json();
       
       if (Array.isArray(data.posters)) {
-        if (isSignedIn && userId) {
-          const likesResponse = await fetch(`/api/user-likes?userId=${userId}&t=${timestamp}`);
+        if (isSignedIn && currentUserId) {
+          const likesResponse = await fetch(`/api/user-likes?userId=${currentUserId}&t=${timestamp}`);
           const likesData = await likesResponse.json();
           const likedPosterIds = new Set(likesData.likes.map((like: { poster_id: number }) => like.poster_id));
           
@@ -68,7 +78,7 @@ export default function PosterGrid() {
     } finally {
       setLoading(false);
     }
-  }, [isSignedIn, userId]);
+  }, [isSignedIn, currentUserId, userId]);
 
   useEffect(() => {
     fetchPosters();
@@ -179,27 +189,29 @@ export default function PosterGrid() {
               </Button>
             </div>
           </div>
-          <div className="p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div className="relative w-8 h-8">
-                  <Image
-                    src={poster.profiles?.avatar_url}
-                    alt={poster.profiles?.full_name}
-                    fill
-                    className="rounded-full object-cover"
-                  />
+          {showCreatorInfo && (
+            <div className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="relative w-8 h-8">
+                    <Image
+                      src={poster.profiles?.avatar_url}
+                      alt={poster.profiles?.full_name}
+                      fill
+                      className="rounded-full object-cover"
+                    />
+                  </div>
+                  <span className="font-medium text-sm text-white dark:text-zinc-100">
+                    {poster.profiles?.full_name}
+                  </span>
                 </div>
-                <span className="font-medium text-sm text-white dark:text-zinc-100">
-                  {poster.profiles?.full_name}
-                </span>
-              </div>
-              <div className="flex items-center text-sm text-white dark:text-zinc-400">
-                <Heart className="h-4 w-4 mr-1" />
-                <span>{poster.likes_count}</span>
+                <div className="flex items-center text-sm text-white dark:text-zinc-400">
+                  <Heart className="h-4 w-4 mr-1" />
+                  <span>{poster.likes_count}</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </Card>
       ))}
     </div>
