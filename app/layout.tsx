@@ -79,10 +79,10 @@ export default function RootLayout({
         >
           <CreditsProvider>
             <UserProfileInitializer />
-            <div className="flex items-center justify-between px-4 py-2">
-              <Header />
-            </div>
-            {children}
+            <Header />
+            <main className="pt-20">
+              {children}
+            </main>
             <Toaster />
           </CreditsProvider>
         </body>
