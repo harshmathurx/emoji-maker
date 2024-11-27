@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const { full_name, email, avatar_url } = await request.json();
 
     // First try to get existing profile
-    let { data: profile, error: fetchError } = await supabase
+    let { data: profile } = await supabase
       .from('profiles')
       .select()
       .eq('user_id', userId)
