@@ -21,12 +21,31 @@ export async function POST(request: Request) {
   }
 
   try {
+    // First check if user has enough credits
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('credits')
+      .eq('user_id', userId)
+      .single();
+
+    if (profileError) throw profileError;
+
+    // Explicitly check credits before proceeding
+    if (!profile || profile.credits < 1) {
+      return NextResponse.json({ 
+        error: 'Insufficient credits', 
+        message: 'Please purchase more credits to continue generating posters.',
+        redirectTo: '/pricing'
+      }, { status: 403 });
+    }
+
+    // Now attempt to deduct the credit
     const { data: deductResult, error: deductError } = await supabase.rpc(
       'deduct_credit',
       { user_id_param: userId }
     );
 
-    if (deductError || !deductResult) {
+    if (deductError) {
       return NextResponse.json({ 
         error: 'Insufficient credits', 
         message: 'Please purchase more credits to continue generating posters.',
@@ -38,10 +57,14 @@ export async function POST(request: Request) {
 
     // Check for empty prompt
     if (!prompt.trim()) {
+      // Refund the credit since we're not generating
+      await supabase.rpc('refund_credit', {
+        user_id_param: userId
+      });
       return NextResponse.json({ 
         error: 'Empty prompt', 
         message: 'Prompt cannot be empty.' 
-      }, { status: 400 }); // Bad Request
+      }, { status: 400 });
     }
 
     try {
@@ -102,6 +125,7 @@ export async function POST(request: Request) {
 
       if (posterError) throw posterError;
 
+      // Record credit usage
       const { error: usageError } = await supabase
         .from('credit_usage')
         .insert({
@@ -127,7 +151,11 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error generating or uploading poster:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: 'Failed to generate or upload poster', details: errorMessage }, { status: 500 });
+    
+    return NextResponse.json({ 
+      error: 'Failed to generate or upload poster', 
+      details: errorMessage 
+    }, { status: 500 });
   }
 }
 

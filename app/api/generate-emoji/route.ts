@@ -21,7 +21,6 @@ export async function POST(request: Request) {
   console.log('User ID:', userId);
 
   if (!userId) {
-    console.log('Unauthorized: No user ID');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -43,7 +42,6 @@ export async function POST(request: Request) {
     const { prompt } = await request.json();
 
     try {
-      console.log('Generating emoji with Replicate');
       const output = await replicate.run(
         "fofr/sdxl-emoji:dee76b5afde21b0f01ed7925f0665b7e879c50ee718c5f78a9d38e04d523cc5e",
         {

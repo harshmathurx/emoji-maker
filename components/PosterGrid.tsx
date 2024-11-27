@@ -7,6 +7,7 @@ import { useStore } from '../lib/store';
 import { Download, Heart } from 'lucide-react';
 import { Button } from './ui/button';
 import { useAuth } from '@clerk/nextjs';
+import { PosterSkeletonGrid } from "./ui/poster-skeleton";
 
 interface Poster {
   id: number;
@@ -26,11 +27,13 @@ interface PosterWithUser extends Poster {
 
 export default function PosterGrid() {
   const [posters, setPosters] = useState<PosterWithUser[]>([]);
+  const [loading, setLoading] = useState(true);
   const newPoster = useStore((state) => state.newPoster);
   const { isSignedIn, userId } = useAuth();
 
   const fetchPosters = useCallback(async () => {
     try {
+      setLoading(true);
       const timestamp = new Date().getTime();
       const response = await fetch(`/api/posters?t=${timestamp}`);
       const data = await response.json();
@@ -62,6 +65,8 @@ export default function PosterGrid() {
       }
     } catch (error) {
       console.error('Error fetching posters:', error);
+    } finally {
+      setLoading(false);
     }
   }, [isSignedIn, userId]);
 
@@ -131,6 +136,10 @@ export default function PosterGrid() {
       console.error('Error updating likes:', error);
     }
   };
+
+  if (loading) {
+    return <PosterSkeletonGrid />;
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 p-4">
