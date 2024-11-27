@@ -9,6 +9,7 @@ import UserProfileInitializer from '../components/UserProfileInitializer';
 import { Toaster } from "@/components/ui/toaster";
 import { CreditsProvider } from '@/hooks/use-credits';
 import { siteConfig } from "@/lib/metadata.config";
+import { Footer } from "@/components/footer";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -75,14 +76,15 @@ export default function RootLayout({
           />
         </head>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+          className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
         >
           <CreditsProvider>
             <UserProfileInitializer />
             <Header />
-            <main className="pt-20">
+            <main className="pt-20 flex-1">
               {children}
             </main>
+            <Footer />
             <Toaster />
           </CreditsProvider>
         </body>
