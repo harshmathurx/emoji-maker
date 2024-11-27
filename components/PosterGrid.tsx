@@ -156,7 +156,7 @@ export default function PosterGrid({ userId, showCreatorInfo = true }: PosterGri
       {posters.map((poster) => (
         <Card 
           key={poster.id} 
-          className="group overflow-hidden bg-zinc-900 dark:bg-zinc-900/90 backdrop-blur-sm border-0 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+          className="group overflow-hidden bg-zinc-900 backdrop-blur-sm border-0 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
         >
           <div className="relative aspect-square">
             <Image
